@@ -74,7 +74,6 @@ handle(mouse_out, Wd = #widget{tags = T, size = Sz}) ->
 
 handle({resize, {W,H}}, Wd = #widget{state = S, tags = T, format = F}) ->
     MouseIn = lists:member(mouse_in, T),
-    MouseDown = lists:member(mouse_down, T),
     IdleBg = {16#78 / 256, 16#1a / 256, 16#97 / 256},
     ActiveBg = {16#99 / 256, 16#2a / 256, 16#c1 /256},
     Fg = {0.95,0.95,1},

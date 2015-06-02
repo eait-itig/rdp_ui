@@ -190,7 +190,7 @@ handle(#ts_inpevt_key{code = enter, action = down}, Wd = #widget{id = Id}) ->
 handle(E = #ts_inpevt_key{code = space}, Wd = #widget{}) ->
     handle(E#ts_inpevt_key{code = {32, 32}}, Wd);
 
-handle(#ts_inpevt_unicode{code = Codepoint, action = down}, Wd = #widget{tags = T, state = S}) ->
+handle(#ts_inpevt_unicode{code = Codepoint, action = down}, Wd = #widget{state = S}) ->
     Char = unicode:characters_to_binary([Codepoint], {utf16, little}, utf8),
 
     #state{xs = Xs0, text = Text0, cursor = Cursor0, mask = M} = S,
@@ -229,7 +229,7 @@ handle(#ts_inpevt_key{code = {Unshift, Shift}, action = down}, Wd = #widget{tags
     S2 = S#state{xs = Xs1, text = Text1, cursor = Cursor1},
     handle(redraw_text, Wd#widget{state = S2});
 
-handle(#ts_inpevt_key{action = up}, Wd = #widget{state = S}) ->
+handle(#ts_inpevt_key{action = up}, Wd = #widget{}) ->
     {ok, Wd, []};
 
 handle(focus, Wd = #widget{tags = T, state = S}) ->
@@ -242,7 +242,7 @@ handle(focus, Wd = #widget{tags = T, state = S}) ->
             handle(redraw_base, Wd#widget{state = S2, tags = [focus | T]})
     end;
 
-handle(#ts_inpevt_mouse{action = down, buttons = [1], point = {X,Y}}, Wd = #widget{tags = T, size = {W,H}, state = S}) ->
+handle(#ts_inpevt_mouse{action = down, buttons = [1], point = {X,Y}}, Wd = #widget{tags = T, size = {_W,H}, state = S}) ->
     YFrac = Y / H,
     #state{xs = Xs} = S,
     S2 = if
@@ -276,7 +276,7 @@ handle(blur, Wd = #widget{tags = T}) ->
         _ -> handle(redraw_base, Wd#widget{tags = T -- [focus]})
     end;
 
-handle({resize, {W,H}}, Wd = #widget{state = S, tags = T}) ->
+handle({resize, {W,H}}, Wd = #widget{}) ->
     handle(redraw_base, Wd#widget{size = {W,H}});
 
 handle(redraw_base, Wd = #widget{state = S, tags = T, size = Sz, format = F}) ->
@@ -284,7 +284,7 @@ handle(redraw_base, Wd = #widget{state = S, tags = T, size = Sz, format = F}) ->
     S2 = S#state{base = Img},
     handle(redraw_text, Wd#widget{state = S2});
 
-handle(redraw_text, Wd = #widget{state = S, tags = T, size = {W, H}}) ->
+handle(redraw_text, Wd = #widget{state = S, tags = T, size = {_W, H}}) ->
     #state{text = Text, cursor = N, xs = Xs, base = Image0, placeholder = Placeholder, mask = Mask} = S,
     TextBefore = binary:part(Text, {0, N}),
     TextAfter = binary:part(Text, {N, byte_size(Text) - N}),

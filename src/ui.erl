@@ -61,7 +61,7 @@ selector_matches(W, {contains, P}) -> rect_contains({0,0}, W#widget.size, P);
 selector_matches(W, {tag, T}) -> lists:member(T, W#widget.tags).
 
 -spec collect_orders(widget()) -> [order()].
-collect_orders(W = #widget{orders = O, children = Ks}) ->
+collect_orders(#widget{orders = O, children = Ks}) ->
     O ++ lists:flatmap(fun(K) -> offset_orders(K#widget.dest, collect_orders(K)) end, Ks).
 
 -spec offset_orders(point(), [order()]) -> [order()].
@@ -80,7 +80,7 @@ offset_selectors(O = {X0, Y0}, [{contains, {X, Y}} | Rest]) ->
 offset_selectors(O, [Other | Rest]) ->
     [Other | offset_selectors(O, Rest)].
 
-offset_event(O = {X0, Y0}, Evt = #ts_inpevt_mouse{point = {X, Y}}) ->
+offset_event({X0, Y0}, Evt = #ts_inpevt_mouse{point = {X, Y}}) ->
     Evt#ts_inpevt_mouse{point = {X - X0, Y - Y0}};
 offset_event(_O, Evt) -> Evt.
 
@@ -168,7 +168,7 @@ handle(W = #widget{mod = M, orders = OldOrders, children = Kids}, [Selector = {T
             end, Kids),
             handle_recurse(W, NewKOs)
     end;
-handle(W = #widget{dest = D, children = K, mod = M}, [Selector = {Type, _} | SelRest], Event) ->
+handle(W = #widget{children = K}, [Selector = {Type, _} | SelRest], Event) ->
     NewKOs = case selector_matches(W, Selector) of
         true when Type =/= contains ->
             lists:map(fun(Kid = #widget{dest = KD}) ->
@@ -181,9 +181,9 @@ handle(W = #widget{dest = D, children = K, mod = M}, [Selector = {Type, _} | Sel
     end,
     handle_recurse(W, NewKOs).
 
-handle_recurse(W = #widget{dest = D, mod = M, orders = OldOrders, children = Kids}, NewKOs) ->
-    NewKids = [K || {K, O, Es} <- NewKOs],
-    Evts = lists:flatmap(fun({K, O, Es}) -> Es end, NewKOs),
+handle_recurse(W = #widget{mod = M, orders = OldOrders, children = Kids}, NewKOs) ->
+    NewKids = [K || {K, _O, _Es} <- NewKOs],
+    Evts = lists:flatmap(fun({_K, _O, Es}) -> Es end, NewKOs),
     W2 = W#widget{children = NewKids},
     case lists:any(fun({_, [], _}) -> false; ({_, _, _}) -> true end, NewKOs) of
         false ->
@@ -191,8 +191,8 @@ handle_recurse(W = #widget{dest = D, mod = M, orders = OldOrders, children = Kid
         true ->
             case M:handle({children_updated, Kids}, W2) of
                 {ok, W3 = #widget{orders = OldOrders, children = NewKids}, MoreEvts} ->
-                    Orders = lists:flatmap(fun({K = #widget{dest = KD}, O, _Es}) ->
-                        offset_orders(K#widget.dest, O)
+                    Orders = lists:flatmap(fun({#widget{dest = KD}, O, _Es}) ->
+                        offset_orders(KD, O)
                     end, NewKOs),
                     case Orders of
                         [#null_order{} | _] ->
@@ -277,7 +277,7 @@ divide_bitmap(I = #cairo_image{width = W, height = H}, {X0,Y0})
     lists:flatmap(fun({X, Y, Slice}) ->
         divide_bitmap(Slice, {X0 + X, Y0 + Y})
     end, Slices);
-divide_bitmap(I = #cairo_image{data = D, width = W, height = H, format = Fmt}, {X,Y}) ->
+divide_bitmap(#cairo_image{data = D, width = W, height = H, format = Fmt}, {X,Y}) ->
     Bpp = case Fmt of
         rgb24 -> 24;
         rgb16_565 -> 16;
@@ -291,11 +291,6 @@ divide_bitmap(I = #cairo_image{data = D, width = W, height = H, format = Fmt}, {
     true = (byte_size(Compr) < 1 bsl 16),
     [#ts_bitmap{dest={X,Y}, size={W,H}, bpp=Bpp, data = Compr,
         comp_info = CompInfo}].
-
-rect_to_ts_order(#rect{dest={X,Y}, size={W,H}, color={R,G,B}}) ->
-    #ts_order_opaquerect{dest={round(X),round(Y)},
-        size={round(W),round(H)},
-        color={round(R*256), round(G*256), round(B*256)}}.
 
 orders_to_updates(Orders, Fmt) ->
     T1 = os:timestamp(),

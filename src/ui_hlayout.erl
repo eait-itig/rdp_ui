@@ -36,8 +36,8 @@
 
 -record(state, {margin=20, valign=center}).
 
-do_layout(Kids, {W, H}, S = #state{margin = Margin, valign = VAlign}) ->
-    UsedWidth = lists:sum([KW || #widget{size = {KW, KH}} <- Kids]) + Margin * (length(Kids) - 1),
+do_layout(Kids, {W, H}, #state{margin = Margin, valign = VAlign}) ->
+    UsedWidth = lists:sum([KW || #widget{size = {KW, _KH}} <- Kids]) + Margin * (length(Kids) - 1),
     StartX = W / 2 - UsedWidth / 2,
     {_, NewKids} = lists:foldl(fun(Kid = #widget{size = {KW,KH}}, {X, KKids}) ->
         ThisX = if (X =:= StartX) -> X; true -> X + Margin end,

@@ -36,7 +36,7 @@
 
 -record(state, {bgcolor = {0,0,0}, focus=[]}).
 
-rect_order(Sz = {W, H}, Color = {R,G,B}, Fmt) ->
+rect_order({W, H}, {R,G,B}, Fmt) ->
     Image0 = #cairo_image{width = round(W), height = round(H),
         format = Fmt, data = <<>>},
     {ok, _, Image1} = cairerl_nif:draw(Image0, [], [
@@ -63,7 +63,7 @@ handle(focus_next, Wd = #widget{state = S}) ->
     FocusEvts = [{ [{id, Id}], focus } || Id <- NewIds],
     {ok, Wd, FocusEvts};
 
-handle({children_updated, _OldKids}, Wd = #widget{children = NewKids, state = S = #state{focus = OldFocus}}) ->
+handle({children_updated, _OldKids}, Wd = #widget{children = _NewKids, state = S = #state{focus = OldFocus}}) ->
     NewFocus = ui:select(Wd, [{tag, focus}]),
     case [K#widget.id || K <- NewFocus] of
         OldFocus ->

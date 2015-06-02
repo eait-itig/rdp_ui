@@ -39,7 +39,7 @@ color_set_order({R, G, B}) ->
 
 -record(state, {align, text, bgcolor={0,0,0}, fgcolor={1,1,1}}).
 
-get_text(Wd = #widget{state = #state{text = Text}}) ->
+get_text(#widget{state = #state{text = Text}}) ->
     Text.
 
 handle({init, Align, Text}, Wd = #widget{size = Sz}) ->
@@ -82,7 +82,7 @@ handle({resize, {W,H}}, Wd = #widget{state = S, format = F}) ->
         color_set_order(Fg),
         #cairo_select_font_face{family= <<"sans-serif">>},
         #cairo_set_font_size{size = 0.8 * LineH}] ++
-        lists:flatmap(fun({N, Line, LWidth} = Z) ->
+        lists:flatmap(fun({N, Line, LWidth}) ->
             [#cairo_new_path{},
              #cairo_identity_matrix{}] ++
             case Align of

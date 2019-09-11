@@ -104,10 +104,10 @@ handle(#ts_inpevt_key{code = shift, action = up}, Wd = #widget{tags = T}) ->
     end;
 
 handle(#ts_inpevt_key{code = ctrl, action = down}, Wd = #widget{state = S}) ->
-    {ok, Wd#widget{state = S#state{ctrl = true}}};
+    {ok, Wd#widget{state = S#state{ctrl = true}}, []};
 
 handle(#ts_inpevt_key{code = ctrl, action = up}, Wd = #widget{state = S}) ->
-    {ok, Wd#widget{state = S#state{ctrl = false}}};
+    {ok, Wd#widget{state = S#state{ctrl = false}}, []};
 
 handle(#ts_inpevt_key{code = left, action = down}, Wd = #widget{state = S}) ->
     #state{cursor = Cursor0} = S,

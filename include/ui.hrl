@@ -37,12 +37,12 @@
 -type order() :: #rect{} | #image{} | #null_order{}.
 
 -record(widget, {id :: term(),
-				 tags = [] :: [atom()],
-				 dest = {0.0, 0.0} :: point(),
-				 size = {0.0, 0.0} :: size(),
+                 tags = [] :: [atom()],
+                 dest = {0.0, 0.0} :: point(),
+                 size = {0.0, 0.0} :: size(),
                  format = rgb24 :: cairerl:pixel_format(),
-				 mod = error(no_module) :: atom(),
-				 state :: term(),
-				 orders = [] :: [order()],
-				 children = []}).
+                 mod = error(no_module) :: atom(),
+                 state :: term(),
+                 orders = [] :: [order()],
+                 children = []}).
 -type widget() :: #widget{}.

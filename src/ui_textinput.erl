@@ -37,7 +37,7 @@
 color_set_order({R, G, B}) ->
     #cairo_set_source_rgba{r = float(R), g = float(G), b = float(B)}.
 
--record(state, {placeholder, text= <<>>, cursor=0, xs=[0.0], base, mask}).
+-record(state, {placeholder, text= <<>>, cursor=0, xs=[0.0], base, mask, ctrl=false}).
 get_text(#widget{state = #state{text = Txt}}) ->
     Txt.
 
@@ -102,6 +102,12 @@ handle(#ts_inpevt_key{code = shift, action = up}, Wd = #widget{tags = T}) ->
         true -> {ok, Wd#widget{tags = T -- [shift_held]}, []};
         false -> {ok, Wd, []}
     end;
+
+handle(#ts_inpevt_key{code = ctrl, action = down}, Wd = #widget{state = S}) ->
+    {ok, Wd#widget{state = S#state{ctrl = true}}};
+
+handle(#ts_inpevt_key{code = ctrl, action = up}, Wd = #widget{state = S}) ->
+    {ok, Wd#widget{state = S#state{ctrl = false}}};
 
 handle(#ts_inpevt_key{code = left, action = down}, Wd = #widget{state = S}) ->
     #state{cursor = Cursor0} = S,
@@ -189,6 +195,11 @@ handle(#ts_inpevt_key{code = enter, action = down}, Wd = #widget{id = Id}) ->
 
 handle(E = #ts_inpevt_key{code = space}, Wd = #widget{}) ->
     handle(E#ts_inpevt_key{code = {32, 32}}, Wd);
+
+handle(#ts_inpevt_unicode{code = Codepoint, action = down}, Wd = #widget{state = S = #state{ctrl = true}}) ->
+    {ok, Wd, []};
+handle(#ts_inpevt_key{code = {Unshift, Shift}, action = down}, Wd = #widget{state = S = #state{ctrl = true}}) ->
+    {ok, Wd, []};
 
 handle(#ts_inpevt_unicode{code = Codepoint, action = down}, Wd = #widget{state = S}) ->
     Char = unicode:characters_to_binary([Codepoint], {utf16, little}, utf8),

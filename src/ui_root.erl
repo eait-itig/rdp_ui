@@ -44,7 +44,7 @@ rect_order({W, H}, {R,G,B}, Fmt) ->
         #cairo_rectangle{width=W,height=H},
         #cairo_fill{}
         ]),
-    #image{image = Image1}.
+    #image{image = Image1, root = true}.
 
 handle(init, Wd = #widget{size = Sz, format = Fmt}) ->
     State = #state{},

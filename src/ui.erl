@@ -292,9 +292,17 @@ divide_bitmap(#cairo_image{data = D, width = W, height = H, format = Fmt}, {X,Y}
     [#ts_bitmap{dest={X,Y}, size={W,H}, bpp=Bpp, data = Compr,
         comp_info = CompInfo}].
 
+keep_last_root(_SoFar, [O = #image{root = true} | Rest]) ->
+    keep_last_root([O], Rest);
+keep_last_root(SoFar, [O | Rest]) ->
+    keep_last_root(SoFar ++ [O], Rest);
+keep_last_root(SoFar, []) ->
+    SoFar.
+
 orders_to_updates(Orders, Fmt) ->
     T1 = os:timestamp(),
-    PrimUpdates = orders_to_prim_updates(Orders, Fmt),
+    FromLastRoot = keep_last_root([], Orders),
+    PrimUpdates = orders_to_prim_updates(FromLastRoot, Fmt),
     Culled = cull_prims(lists:reverse(PrimUpdates)),
     Updates = pack_prims(Culled),
     T2 = os:timestamp(),

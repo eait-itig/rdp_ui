@@ -32,7 +32,7 @@
 -type size() :: {Width :: float(), Height :: float()}.
 
 -record(rect, {dest = {0.0, 0.0} :: point(), size :: size(), color :: color()}).
--record(image, {dest = {0.0, 0.0} :: point(), image :: cairerl:image()}).
+-record(image, {dest = {0.0, 0.0} :: point(), image :: cairerl:image(), root = false :: boolean()}).
 -record(null_order, {ref = make_ref()}).
 -type order() :: #rect{} | #image{} | #null_order{}.
 

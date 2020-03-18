@@ -109,7 +109,7 @@ handle(#ts_inpevt_key{code = ctrl, action = down}, Wd = #widget{state = S}) ->
 handle(#ts_inpevt_key{code = ctrl, action = up}, Wd = #widget{state = S}) ->
     {ok, Wd#widget{state = S#state{ctrl = false}}, []};
 
-handle(#ts_inpevt_key{code = left, action = down}, Wd = #widget{state = S}) ->
+handle(#ts_inpevt_key{code = left, flags = [extended], action = down}, Wd = #widget{state = S}) ->
     #state{cursor = Cursor0} = S,
     case Cursor0 of
         N when N > 0 ->
@@ -120,17 +120,26 @@ handle(#ts_inpevt_key{code = left, action = down}, Wd = #widget{state = S}) ->
             {ok, Wd, []}
     end;
 
-handle(#ts_inpevt_key{code = home, action = down}, Wd = #widget{state = S}) ->
+handle(E = #ts_inpevt_key{code = left, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$4, $4}}, Wd);
+
+handle(#ts_inpevt_key{code = home, flags = [extended], action = down}, Wd = #widget{state = S}) ->
     S2 = S#state{cursor = 0},
     handle(redraw_text, Wd#widget{state = S2});
 
-handle(#ts_inpevt_key{code = 'end', action = down}, Wd = #widget{state = S}) ->
+handle(E = #ts_inpevt_key{code = home, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$7, $7}}, Wd);
+
+handle(#ts_inpevt_key{code = 'end', flags = [extended], action = down}, Wd = #widget{state = S}) ->
     #state{text = Text} = S,
     TextLen = byte_size(Text),
     S2 = S#state{cursor = TextLen},
     handle(redraw_text, Wd#widget{state = S2});
 
-handle(#ts_inpevt_key{code = right, action = down}, Wd = #widget{state = S}) ->
+handle(E = #ts_inpevt_key{code = 'end', flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$1, $1}}, Wd);
+
+handle(#ts_inpevt_key{code = right, flags = [extended], action = down}, Wd = #widget{state = S}) ->
     #state{cursor = Cursor0, text = Text} = S,
     TextLen = byte_size(Text),
     case Cursor0 of
@@ -141,6 +150,27 @@ handle(#ts_inpevt_key{code = right, action = down}, Wd = #widget{state = S}) ->
         _ ->
             {ok, Wd, []}
     end;
+
+handle(E = #ts_inpevt_key{code = right, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$6, $6}}, Wd);
+
+handle(E = #ts_inpevt_key{code = up, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$8, $8}}, Wd);
+
+handle(E = #ts_inpevt_key{code = center, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$5, $5}}, Wd);
+
+handle(E = #ts_inpevt_key{code = down, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$2, $2}}, Wd);
+
+handle(E = #ts_inpevt_key{code = pgup, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$9, $9}}, Wd);
+
+handle(E = #ts_inpevt_key{code = pgdown, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$3, $3}}, Wd);
+
+handle(E = #ts_inpevt_key{code = ins, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$0, $0}}, Wd);
 
 handle(#ts_inpevt_key{code = bksp, action = down}, Wd = #widget{state = S}) ->
     #state{xs = Xs0, text = Text0, cursor = Cursor0, mask = M} = S,

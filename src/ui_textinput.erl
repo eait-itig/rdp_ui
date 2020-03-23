@@ -172,6 +172,18 @@ handle(E = #ts_inpevt_key{code = pgdown, flags = [], action = down}, Wd = #widge
 handle(E = #ts_inpevt_key{code = ins, flags = [], action = down}, Wd = #widget{}) ->
     handle(E#ts_inpevt_key{code = {$0, $0}}, Wd);
 
+handle(E = #ts_inpevt_key{code = 'gray-', flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$-, $-}}, Wd);
+
+handle(E = #ts_inpevt_key{code = 'gray+', flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$+, $+}}, Wd);
+
+handle(E = #ts_inpevt_key{code = prisc, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$*, $*}}, Wd);
+
+handle(E = #ts_inpevt_key{code = del, flags = [], action = down}, Wd = #widget{}) ->
+    handle(E#ts_inpevt_key{code = {$., $.}}, Wd);
+
 handle(#ts_inpevt_key{code = bksp, action = down}, Wd = #widget{state = S}) ->
     #state{xs = Xs0, text = Text0, cursor = Cursor0, mask = M} = S,
     case Cursor0 of
@@ -188,7 +200,7 @@ handle(#ts_inpevt_key{code = bksp, action = down}, Wd = #widget{state = S}) ->
             {ok, Wd, []}
     end;
 
-handle(#ts_inpevt_key{code = del, action = down}, Wd = #widget{state = S}) ->
+handle(#ts_inpevt_key{code = del, flags = [extended], action = down}, Wd = #widget{state = S}) ->
     #state{xs = Xs0, text = Text0, cursor = Cursor0, mask = M} = S,
     TextLen = byte_size(Text0),
     case Cursor0 of

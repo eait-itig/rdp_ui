@@ -57,7 +57,11 @@ handle(focus_next, Wd = #widget{state = S}) ->
     Focusable = ui:select(Wd, [{tag, focusable}]),
     ToFocus = case lists:dropwhile(fun(K) -> not lists:member(K#widget.id, Focus) end, Focusable) of
         [_InFocus, Next | _Rest] -> Next;
-        _ -> [Next | _] = Focusable, Next
+        _ ->
+            case Focusable of
+                [Next | _] -> Next;
+                _ -> Wd
+            end
     end,
     NewIds = [ToFocus#widget.id],
     FocusEvts = [{ [{id, Id}], focus } || Id <- NewIds],

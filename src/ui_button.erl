@@ -46,16 +46,18 @@ handle({set_text, Text}, Wd = #widget{state = S, size = Sz}) ->
     S2 = S#state{text = Text},
     handle({resize, Sz}, Wd#widget{state = S2});
 
-handle(#ts_inpevt_mouse{action = down, buttons = [1]}, Wd = #widget{tags = T, size = Sz}) ->
-    case lists:member(mouse_down, T) of
+handle(#ts_inpevt_mouse{action = down, buttons = [N]},
+        Wd = #widget{tags = T, size = Sz}) when (N == 1) or (N == 2) ->
+    case lists:member({mouse_down, N}, T) of
         true -> {ok, Wd, []};
-        false -> handle({resize, Sz}, Wd#widget{tags = [mouse_down | T]})
+        false -> handle({resize, Sz}, Wd#widget{tags = [{mouse_down, N} | T]})
     end;
 
-handle(#ts_inpevt_mouse{action = up, buttons = [1]}, Wd = #widget{tags = T, size = Sz}) ->
-    case lists:member(mouse_down, T) of
+handle(#ts_inpevt_mouse{action = up, buttons = [N]},
+        Wd = #widget{tags = T, size = Sz}) when (N == 1) or (N == 2) ->
+    case lists:member({mouse_down, N}, T) of
         true ->
-            {ok, Wd2, Evts} = handle({resize, Sz}, Wd#widget{tags = T -- [mouse_down]}),
+            {ok, Wd2, Evts} = handle({resize, Sz}, Wd#widget{tags = T -- [{mouse_down, N}]}),
             {ok, Wd2, Evts ++ [{ ui, {clicked, Wd2#widget.id} }]};
         false -> {ok, Wd, []}
     end;
@@ -69,7 +71,8 @@ handle(#ts_inpevt_mouse{action = move}, Wd = #widget{tags = T, size = Sz}) ->
 handle(mouse_out, Wd = #widget{tags = T, size = Sz}) ->
     case T of
         [] -> {ok, Wd, []};
-        _ -> handle({resize, Sz}, Wd#widget{tags = T -- [mouse_in, mouse_down]})
+        _ -> handle({resize, Sz}, Wd#widget{tags = T --
+                [mouse_in, {mouse_down, 1}, {mouse_down, 2}]})
     end;
 
 handle({resize, {W,H}}, Wd = #widget{state = S, tags = T, format = F}) ->

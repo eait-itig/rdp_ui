@@ -91,6 +91,21 @@ handle({set_text, Text}, Wd = #widget{state = S}) ->
     S2 = S#state{text = Text, cursor = byte_size(Text), xs = [0.0 | Xs]},
     handle(redraw_text, Wd#widget{state = S2});
 
+handle({insert_text, Text}, Wd = #widget{state = S}) ->
+    #state{xs = Xs0, text = Text0, cursor = Cursor0, mask = M} = S,
+    TextBefore = binary:part(Text0, {0, Cursor0}),
+    XsBefore = lists:sublist(Xs0, Cursor0 + 1),
+
+    TextAfter0 = binary:part(Text0, {Cursor0, byte_size(Text0) - Cursor0}),
+    TextAfter1 = <<Text/binary, TextAfter0/binary>>,
+
+    Xs1 = XsBefore ++ calc_xs(TextBefore, TextAfter1, Wd#widget.size, M),
+    Text1 = <<TextBefore/binary, TextAfter1/binary>>,
+    Cursor1 = Cursor0 + byte_size(Text),
+
+    S2 = S#state{xs = Xs1, text = Text1, cursor = Cursor1},
+    handle(redraw_text, Wd#widget{state = S2});
+
 handle(#ts_inpevt_key{code = shift, action = down}, Wd = #widget{tags = T}) ->
     case lists:member(shift_held, T) of
         true -> {ok, Wd, []};
@@ -238,8 +253,15 @@ handle(#ts_inpevt_key{code = enter, action = down}, Wd = #widget{id = Id}) ->
 handle(E = #ts_inpevt_key{code = space}, Wd = #widget{}) ->
     handle(E#ts_inpevt_key{code = {32, 32}}, Wd);
 
-handle(#ts_inpevt_unicode{code = Codepoint, action = down}, Wd = #widget{state = S = #state{ctrl = true}}) ->
-    {ok, Wd, []};
+handle(#ts_inpevt_unicode{code = Codepoint, action = down}, Wd = #widget{id = Id, state = S = #state{ctrl = true}}) ->
+    Char = unicode:characters_to_binary([Codepoint], {utf16, little}, utf8),
+    case Char of
+        <<"v">> -> {ok, Wd, [{ui, {paste, Id}}]};
+        <<"V">> -> {ok, Wd, [{ui, {paste, Id}}]};
+        _ -> {ok, Wd, []}
+    end;
+handle(#ts_inpevt_key{code = {$v, $V}, action = down}, Wd = #widget{id = Id, state = S = #state{ctrl = true}}) ->
+    {ok, Wd, [{ui, {paste, Id}}]};
 handle(#ts_inpevt_key{code = {Unshift, Shift}, action = down}, Wd = #widget{state = S = #state{ctrl = true}}) ->
     {ok, Wd, []};
 

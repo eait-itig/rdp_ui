@@ -307,6 +307,9 @@ handle(#ts_inpevt_key{code = {Unshift, Shift}, action = down}, Wd = #widget{tags
 handle(#ts_inpevt_key{action = up}, Wd = #widget{}) ->
     {ok, Wd, []};
 
+handle(#ts_inpevt_unicode{action = up}, Wd = #widget{}) ->
+    {ok, Wd, []};
+
 handle(focus, Wd = #widget{tags = T, state = S}) ->
     #state{text = Text} = S,
     TextLen = byte_size(Text),

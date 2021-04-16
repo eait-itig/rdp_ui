@@ -96,6 +96,11 @@ handle({remove_child, Sel}, Wd = #widget{children = Kids}) ->
     end, Kids),
     {ok, Wd#widget{children = Kept}, []};
 
+handle(redraw, Wd = #widget{state = #state{bgcolor = Bg}, children = Kids, format = Fmt, size = Size}) ->
+    {ok, Wd#widget{orders = [
+        rect_order(Size, Bg, Fmt)
+    ]}, [{ [{id, Kid#widget.id}], {resize, Size} } || Kid <- Kids]};
+
 handle({resize, NewSize}, Wd = #widget{state = S = #state{bgcolor = Bg}, children = Kids, format = Fmt}) ->
     {ok, Wd#widget{state = S, size = NewSize, orders = [
         rect_order(NewSize, Bg, Fmt)

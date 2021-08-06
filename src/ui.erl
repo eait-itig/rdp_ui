@@ -34,7 +34,7 @@
 
 -export([new/1, new/2, handle_events/2, select/2, print/1]).
 -export([default_handler/2, selector_matches/2]).
--export([divide_bitmap/1, divide_bitmap/2, orders_to_updates/2]).
+-export([divide_bitmap/2, divide_bitmap/1, orders_to_updates/2]).
 
 -spec new(Size :: size()) -> {widget(), [order()]}.
 new(Size) -> new(Size, rgb24).
@@ -239,45 +239,31 @@ default_handler(Event, Wd = #widget{id = Id, mod = M}) ->
 
 % ts utils
 
-slice_bitmap(_I, _Xs, []) -> [];
-slice_bitmap(_I, _Xs, [_Y]) -> [];
-slice_bitmap(I = #cairo_image{}, Xs, [FromY, ToY | RestY]) ->
-    slice_bitmap_x(I, Xs, [FromY, ToY | RestY]) ++
-    slice_bitmap(I, Xs, [ToY | RestY]).
-slice_bitmap_x(_I, [], _) -> [];
-slice_bitmap_x(_I, [_X], _) -> [];
-slice_bitmap_x(I = #cairo_image{format = Fmt}, [FromX, ToX | RestX], [FromY, ToY | RestY]) ->
-    Image0 = #cairo_image{width = ToX - FromX, height = ToY - FromY, data = <<>>, format = Fmt},
+-type bitmap_slice() :: {X :: integer(), Y :: integer(), #cairo_image{}}.
+-spec slice_bitmap(#cairo_image{}, slicerect()) -> bitmap_slice().
+slice_bitmap(I = #cairo_image{format = Fmt}, {FromX, FromY, Width, Height}) ->
+    Image0 = #cairo_image{width = Width, height = Height, data = <<>>, format = Fmt},
     {ok, _, Image1} = cairerl_nif:draw(Image0, [], [
         #cairo_pattern_create_for_surface{tag=img, image=I},
         #cairo_pattern_translate{tag=img, x=float(FromX), y=float(FromY)},
         #cairo_set_source{tag=img},
-        #cairo_rectangle{width = float(ToX - FromX), height = float(ToY - FromY)},
+        #cairo_rectangle{width = float(Width), height = float(Height)},
         #cairo_fill{}
     ]),
-    [{FromX, FromY, Image1} | slice_bitmap_x(I, [ToX | RestX], [FromY, ToY | RestY])].
+    {FromX, FromY, Image1}.
 
--define(BITMAP_SLICE_TGT, (8000 div 4)).
+-spec divide_bitmap(#cairo_image{}) -> [#ts_bitmap{}].
+divide_bitmap(I) ->
+    divide_bitmap(I, {0, 0}).
+-spec divide_bitmap(#cairo_image{}, {X :: integer(), Y :: integer()}) -> [#ts_bitmap{}].
+divide_bitmap(I = #cairo_image{width = W, height = H}, Offset = {_X, _Y}) ->
+    Slices = compute_slices(W, H),
+    [to_ts_bitmap(slice_bitmap(I, S), Offset) || S <- Slices].
 
-divide_bitmap(I = #cairo_image{}) ->
-    divide_bitmap(I, {0,0}).
-divide_bitmap(I = #cairo_image{width = W, height = H}, {X0,Y0})
-        when (X0 < 0); (Y0 < 0) ->
-    X = lists:max([X0, 0]),
-    Y = lists:max([Y0, 0]),
-    [{X, Y, Slice}] = slice_bitmap(I, [X, W], [Y, H]),
-    divide_bitmap(Slice, {X, Y});
-divide_bitmap(I = #cairo_image{width = W, height = H}, {X0,Y0})
-        when (W * H > 4 * ?BITMAP_SLICE_TGT) ->
-    XInt = lists:max([4, 4 * (round(math:sqrt(W / H * ?BITMAP_SLICE_TGT)) div 4)]),
-    YInt = lists:max([4, 4 * (round(math:sqrt(H / W * ?BITMAP_SLICE_TGT)) div 4)]),
-    XIntervals = lists:seq(0, W-4, XInt) ++ [W],
-    YIntervals = lists:seq(0, H-4, YInt) ++ [H],
-    Slices = slice_bitmap(I, XIntervals, YIntervals),
-    lists:flatmap(fun({X, Y, Slice}) ->
-        divide_bitmap(Slice, {X0 + X, Y0 + Y})
-    end, Slices);
-divide_bitmap(#cairo_image{data = D, width = W, height = H, format = Fmt}, {X,Y}) ->
+-spec to_ts_bitmap(bitmap_slice(), {integer(), integer()}) -> #ts_bitmap{}.
+to_ts_bitmap({X, Y,
+        #cairo_image{data = D, width = W, height = H, format = Fmt}},
+        {X0, Y0}) ->
     Bpp = case Fmt of
         rgb24 -> 24;
         rgb16_565 -> 16;
@@ -289,8 +275,35 @@ divide_bitmap(#cairo_image{data = D, width = W, height = H, format = Fmt}, {X,Y}
         % full_size = byte_size(D),
         % scan_width = W},
     true = (byte_size(Compr) < 1 bsl 16),
-    [#ts_bitmap{dest={X,Y}, size={W,H}, bpp=Bpp, data = Compr,
-        comp_info = CompInfo}].
+    Dest = {lists:max([0, X0+X]), lists:max([0, Y0+Y])},
+    #ts_bitmap{dest=Dest, size={W,H}, bpp=Bpp, data = Compr,
+        comp_info = CompInfo}.
+
+%% Try to divide bitmaps into slices 96x96 pixels.
+-define(BITMAP_SLICE_SIZE, 96).
+
+-type slicerect() :: {X :: integer(), Y :: integer(), W :: integer(), H :: integer()}.
+
+%% @doc Slices a WxH bitmap into slice rects with max size BITMAP_SLICE_SIZE.
+-spec compute_slices(integer(), integer()) -> [slicerect()].
+compute_slices(W, H) ->
+    compute_x_slices(W, H, 0).
+
+%% Iterates horizontally across the image, calling compute_y_slices() to compute
+%% a vertical strip of slices at each X coordinate.
+-spec compute_x_slices(integer(), integer(), integer()) -> [slicerect()].
+compute_x_slices(W, _H, X) when X >= W -> [];
+compute_x_slices(W, H, X) ->
+    compute_y_slices(W, H, X, 0) ++
+        compute_x_slices(W, H, X + ?BITMAP_SLICE_SIZE).
+
+%% Computes a vertical strip of slices at a fixed X coordinate.
+-spec compute_y_slices(integer(), integer(), integer(), integer()) -> [slicerect()].
+compute_y_slices(_W, H, _X, Y) when Y >= H -> [];
+compute_y_slices(W, H, X, Y) ->
+    X1 = lists:min([W, X + ?BITMAP_SLICE_SIZE]),
+    Y1 = lists:min([H, Y + ?BITMAP_SLICE_SIZE]),
+    [{X, Y, X1 - X, Y1 - Y} | compute_y_slices(W, H, X, Y1)].
 
 keep_last_root(_SoFar, [O = #image{root = true} | Rest]) ->
     keep_last_root([O], Rest);
@@ -452,3 +465,63 @@ bitmaps_to_orders(Size, R, [Next | Rest]) ->
         true ->
             bitmaps_to_orders(NewSize, [Next | R], Rest)
     end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+y_slices_simple_test() ->
+    Res = compute_y_slices(96, 288, 0, 0),
+    ?assertMatch([
+        {0, 0, 96, 96},
+        {0, 96, 96, 96},
+        {0, 192, 96, 96}
+        ], Res).
+y_slices_clip_y_test() ->
+    Res = compute_y_slices(96, 300, 0, 0),
+    ?assertMatch([
+        {0, 0, 96, 96},
+        {0, 96, 96, 96},
+        {0, 192, 96, 96},
+        {0, 288, 96, 12}
+        ], Res).
+y_slices_clip_xy_test() ->
+    Res = compute_y_slices(90, 300, 0, 0),
+    ?assertMatch([
+        {0, 0, 90, 96},
+        {0, 96, 90, 96},
+        {0, 192, 90, 96},
+        {0, 288, 90, 12}
+        ], Res).
+
+x_slices_simple_test() ->
+    Res = compute_x_slices(96, 288, 0),
+    ?assertMatch([
+        {0, 0, 96, 96},
+        {0, 96, 96, 96},
+        {0, 192, 96, 96}
+        ], Res).
+x_slices_two_col_test() ->
+    Res = compute_x_slices(192, 288, 0),
+    ?assertMatch([
+        {0, 0, 96, 96},
+        {0, 96, 96, 96},
+        {0, 192, 96, 96},
+        {96, 0, 96, 96},
+        {96, 96, 96, 96},
+        {96, 192, 96, 96}
+        ], Res).
+x_slices_two_col_clip_test() ->
+    Res = compute_x_slices(180, 300, 0),
+    ?assertMatch([
+        {0, 0, 96, 96},
+        {0, 96, 96, 96},
+        {0, 192, 96, 96},
+        {0, 288, 96, 12},
+        {96, 0, 84, 96},
+        {96, 96, 84, 96},
+        {96, 192, 84, 96},
+        {96, 288, 84, 12}
+        ], Res).
+
+
+-endif.
